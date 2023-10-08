@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 
 # discord secrets
-scr/config/secrets.ini
+scr/config/config.ini

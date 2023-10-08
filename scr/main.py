@@ -1,9 +1,10 @@
 import requests
 import os.path
 from configparser import ConfigParser
+from flask import Flask, render_template
+app = Flask(__name__)
 config = ConfigParser()
-configPath = 'config/secrets.ini'
-config.read(configPath)
+configPath = 'config/config.ini'
 
 if(os.path.exists(configPath)):
     print('file exist')
@@ -16,9 +17,18 @@ API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
 CLIENT_SECRET = config['discord']['client_secret']
 REDIRECT_URI = config['grabber']['redirect_uri'] + config['grabber']['port']    
+PORT = config['grabber']['port']
+URL_ARGS = config['grabber']['grabber_url_args']
+
+@app.route("/")
+def home():
+    return render_template('home.html')
+
+@app.route(URL_ARGS)
+def redirect():
+    return "It work!"
 
 
-config.read(configPath)
 def exchange_code(code):
     data = {
         'client_id': CLIENT_ID,
@@ -31,3 +41,8 @@ def exchange_code(code):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+if __name__ == "__main__":
+    app.run(debug = False, port=PORT)
