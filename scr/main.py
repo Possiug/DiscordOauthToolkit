@@ -1,10 +1,17 @@
 import requests
 import os.path
+import socket
 from configparser import ConfigParser
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 app = Flask(__name__)
 config = ConfigParser()
 configPath = 'config/config.ini'
+
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.connect(("8.8.8.8", 80))
+LOCAL_IP = s.getsockname()[0]
+EXTERNAL_IP = requests.get('https://api.ipify.org').content.decode('utf8')
+s.close()
 
 if(os.path.exists(configPath)):
     print('file exist')
@@ -12,6 +19,7 @@ if(os.path.exists(configPath)):
 else:
     print('file doesn\'t exist')
     exit()
+
 
 API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
@@ -26,7 +34,8 @@ def home():
 
 @app.route(URL_ARGS)
 def redirect():
-    return "It work!"
+    code = request.args['code']
+    return code
 
 
 def exchange_code(code):
@@ -45,4 +54,4 @@ def exchange_code(code):
     return r.json()
 
 if __name__ == "__main__":
-    app.run(debug = False, port=PORT)
+    app.run(debug = False, port=PORT,host=LOCAL_IP)
