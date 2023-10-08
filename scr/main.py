@@ -24,19 +24,25 @@ else:
 API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
 CLIENT_SECRET = config['discord']['client_secret']
-REDIRECT_URI = config['grabber']['redirect_uri'] + config['grabber']['port']    
 PORT = config['grabber']['port']
 URL_ARGS = config['grabber']['grabber_url_args']
+REDIRECT_URI = config['grabber']['redirect_uri'] + PORT + URL_ARGS
+
+
+
 
 @app.route("/")
 def home():
     return render_template('home.html')
 
 @app.route(URL_ARGS)
-def redirect():
-    code = request.args['code']
-    return code
-
+def login():
+    if (request.args.__contains__('code')):
+        code = request.args['code']
+        return exchange_code(code)
+    else:
+        return 'hi!'
+    
 
 def exchange_code(code):
     data = {
@@ -50,8 +56,10 @@ def exchange_code(code):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
-    r.raise_for_status()
-    return r.json()
+    if(r):
+        r = r.json()
+        return r
+
 
 if __name__ == "__main__":
     app.run(debug = False, port=PORT,host=LOCAL_IP)
