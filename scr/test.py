@@ -1,18 +1,8 @@
 import json
-try:
-    with open('test.json', 'x+') as jsfile:
-        to_json = {'users':["aaa"]}
-    try:
-       json.load(jsfile)['users']
-    except Exception as err:
-        print("bad", err)
-        exit()
-    jsfile.seek(0)
-    json.dump(to_json, jsfile, indent=4)
-except:
-    pass
-    print('all bad')
-    #print(users)
+
+with open('test.json', 'r') as jsfile:
+    test = json.load(jsfile)
+    print(test)
     
 
 '''

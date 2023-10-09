@@ -11,7 +11,7 @@ dbPath = 'resources/db.json'
 
 cTokens = []
 cRefreshes = []
-
+    
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.connect(("8.8.8.8", 80))
 LOCAL_IP = s.getsockname()[0]
@@ -22,8 +22,60 @@ if(os.path.exists(configPath)):
     print('config file exist')
     config.read(configPath)
 else:
-    print('config file doesn\'t exist')
-    exit()
+    print('config file doesn\'t exist! creating you have to enter some values!')
+    a = input("Discord client id: ")
+    b = input("Discord client secret: ")
+    while(True):
+        c = input("Discord api url(https://discord.com/api/v10): ")
+        if(c == ''):
+            c = 'https://discord.com/api/v10'
+            break
+        if(c.startswith("https://discord.com/api/")):
+            break
+        else:
+            print('incorrect url')
+    while(True):
+        d = input("Port(3000) 1024-32766: ")
+        if(d == ''):
+            d = 3000
+        try:
+            ret = int(d)
+            if(ret>=1024 and ret<=32767):
+                break
+            else:
+                print("incorrect port number! pls enter number in 1024-32766")
+        except ValueError:
+            print('You have not entered a number!')
+    while(True):
+        e = input('redirect url *generated exactly for you*(%s): ' % 'http://%s:' % EXTERNAL_IP)
+        if(e == ''):
+            e = 'http://%s:' % EXTERNAL_IP
+            break
+        if(e.startswith('http')):
+            break
+        else:
+            print('incorrect url! please enter http(https) url!')
+    while(True):
+        f = input("Url path(/api/auth/discord/redirect): ")
+        if(f == ''):
+            f = "/api/auth/discord/redirect"
+            break
+        if(f == '/'):
+            print('incorrect path! must be more then just "/"')
+        elif(f.startswith('/')):
+            break
+        else:
+            print('incorrect path! must start with /')
+    config['discord'] = {'client_id': a,
+                         'client_secret': b,
+                         'api': c}
+    config['grabber'] = {'port': d,
+                         'redirect_uri': e,
+                         'grabber_url_args': f}
+    print('writing config file in %s' % configPath)
+    with open(configPath, 'w') as conf:
+        config.write(conf)
+        print('writed config file in %s' % configPath)
 
 if(os.path.exists(dbPath)):
     with open(dbPath, 'r+') as db:
