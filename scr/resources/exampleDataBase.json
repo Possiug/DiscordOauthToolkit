@@ -3,6 +3,8 @@
         "id":"111111111111111",
         "username": "possiug",
         "global_name": "Possiug",
+        "token":"1111aaaaAAAA",
+        "refresh_token":"2222bbbbBBBB",
         "locale": "en-US",
         "premium_type": 0,
         "email": "noreply@possiug.com",
@@ -11,7 +13,20 @@
             {
                 "id":"22222222222222",
                 "name": "Possiug team!",
-                "owner": true
+                "owner": true,
+                "server_profile":{
+                    "nick":"Possiug Top",
+                    "bio":"",
+                    "joined_at":"2023-00-00T12:00:00.00000+00:00",
+                    "pending":false,
+                    "mute":false,
+                    "deaf":true,
+                    "premium_since": null,
+                    "unusual_dm_activity_until": null,
+                    "roles":[
+                        "48327642634924"
+                    ]
+                }
             }
         ],
         "connections":[
