@@ -14,20 +14,7 @@
             {
                 "id":"22222222222222",
                 "name": "Possiug team!",
-                "is_owner": true,
-                "server_profile":{
-                    "nick":"Possiug Top",
-                    "bio":"",
-                    "joined_at":"2023-00-00T12:00:00.00000+00:00",
-                    "pending":false,
-                    "mute":false,
-                    "deaf":true,
-                    "premium_since": null,
-                    "unusual_dm_activity_until": null,
-                    "roles":[
-                        "48327642634924"
-                    ]
-                }
+                "is_owner": true
             }
         ],
         "connections":[

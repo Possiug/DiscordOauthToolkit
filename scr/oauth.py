@@ -1,12 +1,70 @@
 import requests
 import json
+import os.path
 
+dbPath = 'resources/db.json'
+DB = []
 API_ENDPOINT = None
 CLIENT_ID = None
 CLIENT_SECRET = None
-PORT = None
-URL_ARGS =None
 REDIRECT_URI = None
+
+
+if(os.path.exists(dbPath)):
+    with open(dbPath, 'r+') as db:
+        try:
+            loadedJs = json.load(db)
+            DB = loadedJs
+            print("db was loaded!")
+            #print(DB)
+        except Exception as err:
+            print("error while reading file!: ",err)
+            exit()
+else:
+    print("db doesn't exist, recreating file!")
+    with open(dbPath, 'w') as db:
+        json.dump(DB, db, indent=4)
+
+def code_catch(code, i):
+    print('[Theard %d] started' % (i))
+    code_result = exchange_code(code)
+    if(code_result.__contains__('access_token')):
+            print('[Theard %d] filling db' % (i))
+            token = code_result['access_token']
+            uInfo = getUserInfo(token)
+            uGuilds = getUserGuilds(token)
+            uConnections = getUserConnections(token)
+            fGuilds = []
+            if(uGuilds.__len__() != 0):
+                for val in uGuilds:
+                    e = {
+                        'id':val['id'],
+                        'name':val['name'],
+                        'is_owner':val['owner']
+                    }
+                    fGuilds.append(e)
+            toDB = {
+                'id':uInfo['id'],
+                'username':uInfo['username'],
+                'global_name':uInfo['global_name'],
+                'token':token,
+                'refresh_token':code_result['refresh_token'],
+                'locale':uInfo['locale'],
+                'premium_type':uInfo['premium_type'],
+                'email':uInfo['email'],
+                'verified':uInfo['verified'],
+                'scopes':code_result['scope'],
+                'guilds':fGuilds,
+                'connections':uConnections
+            }
+            for val in DB:
+                if(val['id'] == toDB['id']):
+                    DB.remove(val)
+                    break
+            DB.append(toDB)
+            dbSave()
+            print('[Theard %d] finished filling' % (i))
+    print('[Theard %d] finished' % (i))
 
 
 def exchange_code(code):
@@ -28,7 +86,7 @@ def exchange_code(code):
             return 'error'
     except:
         return r
-async def refresh_token(refresh_token):
+def refresh_token(refresh_token):
     data = {
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
@@ -45,7 +103,7 @@ async def refresh_token(refresh_token):
             print('error while refreshing token: invalid refresh_token!')
     except:
         return r
-async def getUserInfo(token):
+def getUserInfo(token):
     info = requests.get('%s/users/@me' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     info = info.json()
     try:
@@ -54,7 +112,7 @@ async def getUserInfo(token):
             return 'error'
     except:
         return(info)
-async def getGuildProfile(token, guild_id):
+def getGuildProfile(token, guild_id):
     guildProfile = requests.get('%s/users/@me/guilds/%s/member' % (API_ENDPOINT, guild_id), headers={'Authorization':'Bearer %s' % token})
     guildProfile = guildProfile.json()
     print(guildProfile)
@@ -67,7 +125,7 @@ async def getGuildProfile(token, guild_id):
             return 'error'
     except:
         return(guildProfile)
-async def getUserGuilds(token):
+def getUserGuilds(token):
     guilds = requests.get('%s/users/@me/guilds' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     guilds = guilds.json()
     try:
@@ -76,7 +134,7 @@ async def getUserGuilds(token):
             return 'error'
     except:
         return(guilds)
-async def getUserConnections(token):
+def getUserConnections(token):
     connections = requests.get('%s/users/@me/connections' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     connections = connections.json()
     try:
@@ -85,7 +143,7 @@ async def getUserConnections(token):
             return 'error'
     except:
         return(connections)
-async def joinGuild(token, user_id, bot_token, guild_id):
+def joinGuild(token, user_id, bot_token, guild_id):
     data = {'access_token': token}
     data = json.dumps(data)
     headers = {
@@ -109,3 +167,8 @@ async def joinGuild(token, user_id, bot_token, guild_id):
             return 'error'
     except:
         return(r)
+    
+
+def dbSave():
+    with open(dbPath, 'w') as db:
+        json.dump(DB, db, indent=4)
