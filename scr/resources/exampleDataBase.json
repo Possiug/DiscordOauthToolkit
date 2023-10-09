@@ -9,11 +9,12 @@
         "premium_type": 0,
         "email": "noreply@possiug.com",
         "verified": false,
+        "scopes":"",
         "guilds":[
             {
                 "id":"22222222222222",
                 "name": "Possiug team!",
-                "owner": true,
+                "is_owner": true,
                 "server_profile":{
                     "nick":"Possiug Top",
                     "bio":"",

