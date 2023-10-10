@@ -2,6 +2,7 @@ import requests
 import os.path
 import socket
 import logging
+import time
 from configparser import ConfigParser
 from flask import Flask, render_template, request
 from threading import Thread
@@ -15,7 +16,6 @@ dbPath = 'resources/db.json'
 
 Threads = []
 
-DB = []
 
 try:    
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -83,15 +83,11 @@ else:
     config['grabber'] = {'port': d,
                          'redirect_uri': e,
                          'grabber_url_args': f}
-    
+    print('Your redirect url:"%s"' % e+d+f)
     print('writing config file in %s' % configPath)
     with open(configPath, 'w') as conf:
         config.write(conf)
         print('writed config file in %s' % configPath)
-
-
-
-worker.DB = DB
 
 API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
@@ -114,10 +110,123 @@ async def login():
     if (request.args.__contains__('code')):
         code = request.args['code']
         i = Threads.__len__()
-        t = Thread(target=worker.code_catch, args=(code, i,), daemon=True)
-        Threads.append(t)
+        Threads.append(Thread(target=worker.Code_catch, args=(code, i,), daemon=True))
         Threads[i].start()
         return 'hi!'
 
-if __name__ == "__main__":
+def web():
     app.run(debug = False, port=PORT,host=LOCAL_IP)
+
+
+Threads.append(Thread(target=web, args={}, daemon=True))
+Threads[0].start()
+
+#CLI
+time.sleep(1.0)
+currentUser = None
+while(True):
+    command = input('~: ')
+    cwa = command.split(' ')
+    cmd = cwa[0]
+    match(cmd):
+        case 'help':
+            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update] working with all users in DB')
+        case 'debug':
+            if(cwa.__len__() > 1):
+                match(cwa[1]):
+                    case 'off':
+                        worker.debug = False
+                        print('Debug info now is turned off')
+                    case 'on':
+                        worker.debug = True
+                        print('Debug info now is turned on')
+                    case _:
+                        print('incorrect arg! Pls see "help" for more info!')
+            else:
+                print('Command needs args!')
+        case 'db':
+            if(3 > cwa.__len__() > 1):
+                match(cwa[1]):
+                    case 'length':
+                        print(worker.DB.__len__())
+                    case 'show':
+                        print(worker.DB)    
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
+            elif(4 > cwa.__len__() > 2):
+                match(cwa[1]):
+                    case 'gbName':
+                        worker.dbWorker.show(worker.dbWorker.getByName(cwa[2]))
+                    case 'gbId':
+                        worker.dbWorker.show(worker.dbWorker.getById(cwa[2]))                    
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))        
+            else:
+                print('Incorrect args amount! Use "help"')
+        case 'user':
+            if(cwa.__len__() == 2):
+                match(cwa[1]):
+                    case 'show':
+                        if(currentUser == None):
+                            print('User wasn\'t setted!')
+                        else:
+                            worker.dbWorker.show(worker.dbWorker.getById(currentUser))
+                    case 'clean':
+                        currentUser = None
+                        print('user cleaned')
+                    case 'update':
+                        if(currentUser == None):
+                            print('User wasn\'t setted!')
+                        else:
+                            i = Threads.__len__()
+                            Threads.append(Thread(target=worker.UpdateInfo, args=(worker.dbWorker.getById(currentUser)['refresh_token'], i,), daemon=True))
+                            Threads[i].start()
+                            Threads[i].join()
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))     
+            elif(cwa.__len__() == 4):
+                match(cwa[1]):
+                    case 'joinGuild':
+                        if(currentUser == None):
+                            print('User wasn\'t setted!')
+                        else:
+                            token = worker.dbWorker.getById(currentUser)['token']
+                            result = worker.JoinGuild(token,currentUser,cwa[3],cwa[2])
+                            if(result == 'error'):
+                                print('error while adding user!')
+                            else:
+                                print('added user to a guild')
+            elif(cwa.__len__() == 3):
+                match(cwa[1]):
+                    case 'set':
+                        if(not worker.dbWorker.getById(cwa[2])):
+                            currentUser = None
+                            print('no users with this id in DB!')
+                        else:
+                            currentUser = cwa[2]
+                    case 'guildProfile':
+                        if(currentUser == None):
+                            print('User wasn\'t setted!')
+                        else:
+                            userFull = worker.dbWorker.getById(currentUser)
+                            worker.dbWorker.show(worker.GetGuildProfile(userFull['token'], cwa[2]))      
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))        
+            else:
+                print('Incorrect args amount! Use "help"')
+        case 'all':
+            if(3 > cwa.__len__() > 1):
+                match(cwa[1]):
+                    case 'update':
+                        i = Threads.__len__()
+                        Threads.append(Thread(target=worker.UpdateAll, args=(i,), daemon=True))
+                        Threads[i].start()
+                        Threads[i].join()   
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))     
+            elif(4 > cwa.__len__() > 2):
+                print('Incorrect args amount! Use "help"')
+            else:
+                print('Incorrect args amount! Use "help"')
+        case _:
+            print('Command not found! use "help" for list of commands')
