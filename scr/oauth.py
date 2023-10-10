@@ -171,3 +171,8 @@ def JoinGuild(token, user_id, bot_token, guild_id):
             return 'error'
     except:
         return 'error'
+
+def AllJoin(bot_token,guild_id,i):
+    for val in dbWorker.DB:
+        time.sleep(1.0)
+        JoinGuild(val['token'], val['id'], bot_token, guild_id)

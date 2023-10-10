@@ -130,7 +130,7 @@ while(True):
     cmd = cwa[0]
     match(cmd):
         case 'help':
-            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update] working with all users in DB')
+            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update|joinGuild] working with all users in DB')
         case 'debug':
             if(cwa.__len__() > 1):
                 match(cwa[1]):
@@ -215,7 +215,7 @@ while(True):
             else:
                 print('Incorrect args amount! Use "help"')
         case 'all':
-            if(3 > cwa.__len__() > 1):
+            if(cwa.__len__() == 2):
                 match(cwa[1]):
                     case 'update':
                         i = Threads.__len__()
@@ -224,8 +224,13 @@ while(True):
                         Threads[i].join()   
                     case _:
                         print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))     
-            elif(4 > cwa.__len__() > 2):
-                print('Incorrect args amount! Use "help"')
+            elif(cwa.__len__() == 4):
+                match(cwa[1]):
+                    case 'joinGuild':
+                        i = Threads.__len__()
+                        Threads.append(Thread(target=worker.AllJoin, args=(cwa[3],cwa[2], i), daemon=True))
+                        Threads[i].start()
+                        Threads[i].join() 
             else:
                 print('Incorrect args amount! Use "help"')
         case _:
