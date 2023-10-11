@@ -158,21 +158,41 @@ def JoinGuild(token, user_id, bot_token, guild_id):
     try:
         r = r.json()
         if(r['message'] == '401: Unauthorized'):
-            print('Invalid bot token!')
+            print('[JoinGuild] Invalid bot token!')
             return 'error'
         elif(r['message'] == 'Invalid OAuth2 access token'):
-            print('Invalid user token!')
+            print('[JoinGuild] Invalid user token!')
             return 'error'
         elif(r['message'] == 'Неизвестная гильдия' or r['message'] == 'Unknown Guild'):
-            print('Invalid guild id!')
+            print('[JoinGuild] Invalid guild id!')
+            return 'error'
+        elif(r['message'] == 'Missing Permissions'):
+            print('[JoinGuild] Bot isn\' on server!')
             return 'error'
         else:
-            print(r)
+            print('[JoinGuild]' + r)
             return 'error'
     except:
         return r
 
-def AllJoin(bot_token,guild_id):
-    for val in dbWorker.DB:
-        time.sleep(0.5)
-        JoinGuild(val['token'], val['id'], bot_token, guild_id)
+def Joiner(bot_token, guild_ids, user_id):
+    guild_ids = guild_ids.split(',')
+    if(user_id == -1):
+        for val in dbWorker.DB:
+            time.sleep(0.5)
+            for id in guild_ids:
+                time.sleep(0.5)
+                result = JoinGuild(val['token'], val['id'], bot_token, id)
+                if(result == 'error'):
+                    print('error while adding user[%s] to guild[%s]!' % (val['id'], id))
+                else:
+                    print('added user[%s] to a guild[%s]' % (val['id'], id))
+    else:
+        for id in guild_ids:
+            time.sleep(0.5)
+            result = JoinGuild(dbWorker.getById(user_id)['token'], user_id, bot_token, id)
+            if(result == 'error'):
+                print('error while adding user[%s] to guild[%s]!' % (user_id, id))
+            else:
+                print('added user[%s] to a guild[%s]' % (user_id, id))
+

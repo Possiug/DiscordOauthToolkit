@@ -190,12 +190,7 @@ while(True):
                         if(currentUser == None):
                             print('User wasn\'t setted!')
                         else:
-                            token = worker.dbWorker.getById(currentUser)['token']
-                            result = worker.JoinGuild(token,currentUser,cwa[3],cwa[2])
-                            if(result == 'error'):
-                                print('error while adding user!')
-                            else:
-                                print('added user to a guild')
+                            worker.Joiner(cwa[3],cwa[2],currentUser)
             elif(cwa.__len__() == 3):
                 match(cwa[1]):
                     case 'set':
@@ -227,10 +222,7 @@ while(True):
             elif(cwa.__len__() == 4):
                 match(cwa[1]):
                     case 'joinGuild':
-                        i = Threads.__len__()
-                        Threads.append(Thread(target=worker.AllJoin, args=(cwa[3],cwa[2]), daemon=True))
-                        Threads[i].start()
-                        Threads[i].join() 
+                        worker.Joiner(cwa[3],cwa[2],-1)
                     case _:
                         print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
             else:
