@@ -130,9 +130,9 @@ while(True):
     cmd = cwa[0]
     match(cmd):
         case 'help':
-            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update|joinGuild] working with all users in DB')
+            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update|joinGuild] working with all users in DB\n\tfunction [updateInfo] works directly with functions(FOR PRO ONLY!)')
         case 'debug':
-            if(cwa.__len__() > 1):
+            if(cwa.__len__() == 2):
                 match(cwa[1]):
                     case 'off':
                         worker.debug = False
@@ -141,11 +141,11 @@ while(True):
                         worker.debug = True
                         print('Debug info now is turned on')
                     case _:
-                        print('incorrect arg! Pls see "help" for more info!')
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))  
             else:
-                print('Command needs args!')
+                print('Incorrect args amount! Use "help"')
         case 'db':
-            if(3 > cwa.__len__() > 1):
+            if(cwa.__len__() ==2):
                 match(cwa[1]):
                     case 'length':
                         print(worker.DB.__len__())
@@ -153,7 +153,7 @@ while(True):
                         print(worker.DB)    
                     case _:
                         print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
-            elif(4 > cwa.__len__() > 2):
+            elif(cwa.__len__() == 3):
                 match(cwa[1]):
                     case 'gbName':
                         worker.dbWorker.show(worker.dbWorker.getByName(cwa[2]))
@@ -228,9 +228,21 @@ while(True):
                 match(cwa[1]):
                     case 'joinGuild':
                         i = Threads.__len__()
-                        Threads.append(Thread(target=worker.AllJoin, args=(cwa[3],cwa[2], i), daemon=True))
+                        Threads.append(Thread(target=worker.AllJoin, args=(cwa[3],cwa[2]), daemon=True))
                         Threads[i].start()
                         Threads[i].join() 
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
+            else:
+                print('Incorrect args amount! Use "help"')
+        case 'function':
+            if(cwa.__len__() == 3):
+                match(cwa[1]):
+                    case 'updateInfo':
+                        print('Getting info by refresh token')
+                        worker.UpdateInfo(cwa[2], 0)
+                    case _:
+                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
             else:
                 print('Incorrect args amount! Use "help"')
         case _:
