@@ -26,12 +26,14 @@ def Code_catch(code, i):
 def UpdateAll(i):
     for val in dbWorker.GetParmFromAll('refresh_token'):
         time.sleep(1.0)
-        UpdateInfo(val, i)
+        Add(val, i)
 
 
-def UpdateInfo(refresh_token, i):
-    code_result = Refresh_token(refresh_token)
-    if(code_result.__contains__('access_token')):
+def Add(refresh_tokens, i):
+    refresh_tokens = refresh_tokens.split(',')
+    for refresh_token in refresh_tokens:
+        code_result = Refresh_token(refresh_token)
+        if(code_result.__contains__('access_token')):
             if(debug):print('\n[Theard %d] filling db' % (i))
             toDB = DataGetter(code_result)
             repeat = dbWorker.checkRepeat(toDB['id'])
@@ -175,9 +177,37 @@ def JoinGuild(token, user_id, bot_token, guild_id):
     except:
         return r
 
-def Joiner(bot_token, guild_ids, user_id):
+def GetUsers():
+    output = []
+    print('User amoun: %s' % dbWorker.DB.__len__())
+    for e in dbWorker.DB:
+        toO = {
+            'username': e['username'],
+            'global_name': e['global_name'],
+            'id': e['id']
+        }
+        output.append(toO)
+    dbWorker.show(output)
+def Update(user_ids):
+    if(user_ids == '-1'):
+        refresh_tokens = dbWorker.GetParmFromAll('refresh_token')
+        for refresh in refresh_tokens:
+            Add(refresh, 0)
+            time.sleep(1.0)
+        return
+    user_ids = user_ids.split(',')
+    refresh_tokens = []
+    for id in user_ids:
+        user = dbWorker.getById(id)
+        if(not user):
+            print('No user with given id[%s] found in db!' % (id))
+            continue
+        Add(user['refresh_token'], 0)
+        time.sleep(1.0)
+def Joiner(bot_token, guild_ids, user_ids):
     guild_ids = guild_ids.split(',')
-    if(user_id == -1):
+    user_ids = user_ids.split(',')
+    if(user_ids == -1):
         for val in dbWorker.DB:
             time.sleep(0.5)
             for id in guild_ids:
@@ -188,11 +218,13 @@ def Joiner(bot_token, guild_ids, user_id):
                 else:
                     print('added user[%s] to a guild[%s]' % (val['id'], id))
     else:
-        for id in guild_ids:
+        for user in user_ids:
             time.sleep(0.5)
-            result = JoinGuild(dbWorker.getById(user_id)['token'], user_id, bot_token, id)
-            if(result == 'error'):
-                print('error while adding user[%s] to guild[%s]!' % (user_id, id))
-            else:
-                print('added user[%s] to a guild[%s]' % (user_id, id))
+            for id in guild_ids:
+                time.sleep(0.5)
+                result = JoinGuild(dbWorker.getById(user)['token'], user, bot_token, id)
+                if(result == 'error'):
+                    print('error while adding user[%s] to guild[%s]!' % (user, id))
+                else:
+                    print('added user[%s] to a guild[%s]' % (user, id))
 

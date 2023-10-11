@@ -123,119 +123,53 @@ Threads[0].start()
 
 #CLI
 time.sleep(1.0)
-currentUser = None
 while(True):
     command = input('~: ')
     cwa = command.split(' ')
     cmd = cwa[0]
     match(cmd):
         case 'help':
-            print('Command list:\n\thelp - show this list\n\tdebug [off|on] control theards debug\n\tdb [length|show|gbName|gbId] - work with DB\n\tuser [set|clean|show|update|guildProfile|joinGuild] working with users and oauth methods\n\tall [update|joinGuild] working with all users in DB\n\tfunction [updateInfo] works directly with functions(FOR PRO ONLY!)')
+            print('Command list:\n\thelp - show this list\n\texamples - show examples for all commands\n\tdebug - control theards debug\n\tusers - shows users\n\tbyName <username> - get user from db by username!\n\tbyId <user_id> - get user from db by id!\n\tupdate <user_id> - update info and tokens of user\n\tjoinGuild <user_id> <server_id> <bot_token> - add user from db to a server with bot!\n\tadd <refresh_token> - add new user to db by refresh token')
         case 'debug':
+            if(cwa.__len__() == 1):
+                if(worker.debug):
+                    print('Debug is turned off')
+                else:
+                    print('Debug is turned on')
+                worker.debug = not worker.debug
+            else:
+                print('Incorrect args amount! Use "help"')
+        case 'users':
+            if(cwa.__len__() == 1):
+                worker.GetUsers()
+            else:
+                print('Incorrect args amount!')
+        case 'byName':
             if(cwa.__len__() == 2):
-                match(cwa[1]):
-                    case 'off':
-                        worker.debug = False
-                        print('Debug info now is turned off')
-                    case 'on':
-                        worker.debug = True
-                        print('Debug info now is turned on')
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))  
+                worker.dbWorker.show(worker.dbWorker.getByName(cwa[1]))
             else:
-                print('Incorrect args amount! Use "help"')
-        case 'db':
-            if(cwa.__len__() ==2):
-                match(cwa[1]):
-                    case 'length':
-                        print(worker.DB.__len__())
-                    case 'show':
-                        print(worker.DB)    
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
-            elif(cwa.__len__() == 3):
-                match(cwa[1]):
-                    case 'gbName':
-                        worker.dbWorker.show(worker.dbWorker.getByName(cwa[2]))
-                    case 'gbId':
-                        worker.dbWorker.show(worker.dbWorker.getById(cwa[2]))                    
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))        
-            else:
-                print('Incorrect args amount! Use "help"')
-        case 'user':
+                print('Incorrect args amount!')
+        case 'byId':
             if(cwa.__len__() == 2):
-                match(cwa[1]):
-                    case 'show':
-                        if(currentUser == None):
-                            print('User wasn\'t setted!')
-                        else:
-                            worker.dbWorker.show(worker.dbWorker.getById(currentUser))
-                    case 'clean':
-                        currentUser = None
-                        print('user cleaned')
-                    case 'update':
-                        if(currentUser == None):
-                            print('User wasn\'t setted!')
-                        else:
-                            i = Threads.__len__()
-                            Threads.append(Thread(target=worker.UpdateInfo, args=(worker.dbWorker.getById(currentUser)['refresh_token'], i,), daemon=True))
-                            Threads[i].start()
-                            Threads[i].join()
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))     
-            elif(cwa.__len__() == 4):
-                match(cwa[1]):
-                    case 'joinGuild':
-                        if(currentUser == None):
-                            print('User wasn\'t setted!')
-                        else:
-                            worker.Joiner(cwa[3],cwa[2],currentUser)
-            elif(cwa.__len__() == 3):
-                match(cwa[1]):
-                    case 'set':
-                        if(not worker.dbWorker.getById(cwa[2])):
-                            currentUser = None
-                            print('no users with this id in DB!')
-                        else:
-                            currentUser = cwa[2]
-                    case 'guildProfile':
-                        if(currentUser == None):
-                            print('User wasn\'t setted!')
-                        else:
-                            userFull = worker.dbWorker.getById(currentUser)
-                            worker.dbWorker.show(worker.GetGuildProfile(userFull['token'], cwa[2]))      
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))        
+                worker.dbWorker.show(worker.dbWorker.getById(cwa[1]))
             else:
-                print('Incorrect args amount! Use "help"')
-        case 'all':
+                print('Incorrect args amount!')
+        case 'update':
             if(cwa.__len__() == 2):
-                match(cwa[1]):
-                    case 'update':
-                        i = Threads.__len__()
-                        Threads.append(Thread(target=worker.UpdateAll, args=(i,), daemon=True))
-                        Threads[i].start()
-                        Threads[i].join()   
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))     
-            elif(cwa.__len__() == 4):
-                match(cwa[1]):
-                    case 'joinGuild':
-                        worker.Joiner(cwa[3],cwa[2],-1)
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
+                worker.Update(cwa[1])
+            else:
+                print('Incorrect args amount!')
+        case 'joinGuild':
+            if(cwa.__len__() == 4):
+                worker.Joiner(cwa[3], cwa[2], cwa[1])
+            else:
+                print('Incorrect args amount!')
+        case 'add':
+            if(cwa.__len__() == 2):
+                worker.Add(cwa[1], 0)
             else:
                 print('Incorrect args amount! Use "help"')
-        case 'function':
-            if(cwa.__len__() == 3):
-                match(cwa[1]):
-                    case 'updateInfo':
-                        print('Getting info by refresh token')
-                        worker.UpdateInfo(cwa[2], 0)
-                    case _:
-                        print('Arg "%s" isn\'t %s\'s arg!' % (cwa[1], cmd))
-            else:
-                print('Incorrect args amount! Use "help"')
+        case 'examples':
+            print('Examples:\n\tdebug:\n\t debug\n\tusers:\n\t users\n\tbyName:\n\t byName possiug\n\tbyId:\n\t byId 1100792963157737602\n\tupdate:\n\t update 1100792963157737602\n\t update -1\n\t update 1161570973993156620,1078923883899535420\n\tjoinGuild:\n\t joinGuild 1100792963157737602 1161570973993156620 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\t joinGuild 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\t joinGuild -1 1161570973993156620,1145744998453743706 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\tadd:\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ,OkL80QmDDUKZiPgsxw3bWaeqs0BwuW')
         case _:
             print('Command not found! use "help" for list of commands')
