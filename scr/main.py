@@ -5,7 +5,7 @@ import logging
 import time
 from configparser import ConfigParser
 from flask import Flask, render_template, request
-from threading import Thread
+from threading import Thread, Event
 import oauth as worker
 app = Flask(__name__)
 flasLogger = logging.getLogger('werkzeug')
@@ -15,7 +15,7 @@ configPath = 'resources/config.ini'
 dbPath = 'resources/db.json'
 
 Threads = []
-
+Intervals = []
 
 try:    
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -35,6 +35,7 @@ else:
     print('config file doesn\'t exist! creating, you have to enter some values!')
     a = input("Discord client id: ")
     b = input("Discord client secret: ")
+    g = input("Discord bot token: ")
     while(True):
         c = input("Discord api url(https://discord.com/api/v10): ")
         if(c == ''):
@@ -79,7 +80,8 @@ else:
     
     config['discord'] = {'client_id': a,
                          'client_secret': b,
-                         'api': c}
+                         'api': c,
+                         'bot_token': g}
     config['grabber'] = {'port': d,
                          'redirect_uri': e,
                          'grabber_url_args': f}
@@ -92,6 +94,7 @@ else:
 API_ENDPOINT = config['discord']['api']
 CLIENT_ID = config['discord']['client_id']
 CLIENT_SECRET = config['discord']['client_secret']
+BOT_TOKEN = config['discord']['bot_token']
 PORT = config['grabber']['port']
 URL_ARGS = config['grabber']['grabber_url_args']
 REDIRECT_URI = config['grabber']['redirect_uri'] + PORT + URL_ARGS
@@ -117,10 +120,22 @@ async def login():
 def web():
     app.run(debug = False, port=PORT,host=LOCAL_IP)
 
+def JoinInterval(bot_token, guild_ids, user_ids, timeToSleep, event):
+    print('started infinity join!')
+    timeToSleep = float(int(timeToSleep))
+    if(timeToSleep < 10):
+        timeToSleep = 10
+    while(True):
+        time.sleep(timeToSleep)
+        if event.is_set():
+            break
+        worker.Joiner(bot_token,guild_ids,user_ids)
+    print('stoped infinity join!')
 
 Threads.append(Thread(target=web, args={}, daemon=True))
 Threads[0].start()
 
+interval = Event()
 #CLI
 time.sleep(1.0)
 while(True):
@@ -129,7 +144,7 @@ while(True):
     cmd = cwa[0]
     match(cmd):
         case 'help':
-            print('Command list:\n\thelp - show this list\n\texamples - show examples for all commands\n\tdebug - control theards debug\n\tusers - shows users\n\tbyName <username> - get user from db by username!\n\tbyId <user_id> - get user from db by id!\n\tupdate <user_id> - update info and tokens of user\n\tjoinGuild <user_id> <server_id> <bot_token> - add user from db to a server with bot!\n\tadd <refresh_token> - add new user to db by refresh token')
+            print('Command list:\n\thelp - show this list\n\texamples - show examples for all commands\n\tdebug - control theards debug\n\toutput - control functions output\n\tusers - shows users\n\tbyName <username> - get user from db by username!\n\tbyId <user_id> - get user from db by id!\n\tupdate <user_id> - update info and tokens of user\n\tjoinGuild <user_id> <server_id> - add user from db to a server with bot!\n\tinfJoin <user_id> <server_id> <interval_time> - add user from db to a server with bot every interval_time seconds\n\tstopInf - stoping all working infJoin instances\n\tadd <refresh_token> - add new user to db by refresh token')
         case 'debug':
             if(cwa.__len__() == 1):
                 if(worker.debug):
@@ -137,6 +152,15 @@ while(True):
                 else:
                     print('Debug is turned on')
                 worker.debug = not worker.debug
+            else:
+                print('Incorrect args amount! Use "help"')
+        case 'output':
+            if(cwa.__len__() == 1):
+                if(worker.output):
+                    print('Outut is turned off')
+                else:
+                    print('Output is turned on')
+                worker.output = not worker.output
             else:
                 print('Incorrect args amount! Use "help"')
         case 'users':
@@ -160,8 +184,16 @@ while(True):
             else:
                 print('Incorrect args amount!')
         case 'joinGuild':
+            if(cwa.__len__() == 3):
+                worker.Joiner(BOT_TOKEN, cwa[2], cwa[1])
+            else:
+                print('Incorrect args amount!')
+        case 'infJoin':
             if(cwa.__len__() == 4):
-                worker.Joiner(cwa[3], cwa[2], cwa[1])
+                interval = Event()
+                i = Threads.__len__()
+                Threads.append(Thread(target=JoinInterval,args=(BOT_TOKEN,cwa[2],cwa[1],cwa[3], interval),daemon=True))
+                Threads[i].start()
             else:
                 print('Incorrect args amount!')
         case 'add':
@@ -169,7 +201,12 @@ while(True):
                 worker.Add(cwa[1], 0)
             else:
                 print('Incorrect args amount! Use "help"')
+        case 'stopInf':
+            if(cwa.__len__() == 1):
+                interval.set()
+            else:
+                print('Incorrect args amount! Use "help"')
         case 'examples':
-            print('Examples:\n\tdebug:\n\t debug\n\tusers:\n\t users\n\tbyName:\n\t byName possiug\n\tbyId:\n\t byId 1100792963157737602\n\tupdate:\n\t update 1100792963157737602\n\t update -1\n\t update 1161570973993156620,1078923883899535420\n\tjoinGuild:\n\t joinGuild 1100792963157737602 1161570973993156620 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\t joinGuild 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\t joinGuild -1 1161570973993156620,1145744998453743706 DJmdSFjLDis.G1Khh0.FJSLjGHSyiD234jh\n\tadd:\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ,OkL80QmDDUKZiPgsxw3bWaeqs0BwuW')
+            print('Examples:\n\tdebug:\n\t debug\n\toutput:\n\t output\n\tusers:\n\t users\n\tbyName:\n\t byName possiug\n\tbyId:\n\t byId 1100792963157737602\n\tupdate:\n\t update 1100792963157737602\n\t update -1\n\t update 1161570973993156620,1078923883899535420\n\tjoinGuild:\n\t joinGuild 1100792963157737602 1161570973993156620\n\t joinGuild 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706\n\t joinGuild -1 1161570973993156620,1145744998453743706\n\tinfJoin:\n\t infjoin 1100792963157737602 1161570973993156620\n\t infJoin 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706\n\t infJoin -1 1161570973993156620,1145744998453743706\n\tstopInf:\n\t stopInf\n\tadd:\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ,OkL80QmDDUKZiPgsxw3bWaeqs0BwuW')
         case _:
             print('Command not found! use "help" for list of commands')

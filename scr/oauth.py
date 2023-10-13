@@ -9,6 +9,7 @@ CLIENT_SECRET = None
 REDIRECT_URI = None
 
 debug = True
+output = True
 
 def Code_catch(code, i):
     if(debug):print('\n[Theard %d] started' % (i))
@@ -88,7 +89,7 @@ def Exchange_code(code):
     r = r.json()
     try:
         if(r['error'] == 'invalid_grant'):
-            print('error while exchanging codes: ', r['error_description'])
+            if(output):print('error while exchanging codes: ', r['error_description'])
             return 'error'
     except:
         return r
@@ -106,7 +107,7 @@ def Refresh_token(refresh_token):
     r = r.json()
     try:
         if(r['error'] == 'invalid_grant'):
-            print('error while refreshing token: invalid refresh_token!')
+            if(output):print('error while refreshing token: invalid refresh_token!')
         return 'ERROR'
     except:
         return r
@@ -115,7 +116,7 @@ def GetUserInfo(token):
     info = info.json()
     try:
         if(info['message'] == '401: Unauthorized'):
-            print('Invalid token!')
+            if(output):print('Invalid token!')
             return 'error'
     except:
         return(info)
@@ -124,10 +125,10 @@ def GetGuildProfile(token, guild_id):
     guildProfile = guildProfile.json()
     try:
         if(guildProfile['message'] == '401: Unauthorized'):
-            print('Invalid token!')
+            if(output):print('Invalid token!')
             return 'error'
         if(guildProfile['message'] == 'Неизвестная гильдия' or guildProfile['message'] == 'Unknown Guild'):
-            print('Invalid guild!')
+            if(output):print('Invalid guild!')
             return 'error'
     except:
         return(guildProfile)
@@ -136,7 +137,7 @@ def GetUserGuilds(token):
     guilds = guilds.json()
     try:
         if(guilds['message'] == '401: Unauthorized'):
-            print('Invalid token!')
+            if(output):print('Invalid token!')
             return 'error'
     except:
         return(guilds)
@@ -145,7 +146,7 @@ def GetUserConnections(token):
     connections = connections.json()
     try:
         if(connections['message'] == '401: Unauthorized'):
-            print('Invalid token!')
+            if(output):print('Invalid token!')
             return 'error'
     except:
         return(connections)
@@ -160,26 +161,26 @@ def JoinGuild(token, user_id, bot_token, guild_id):
     try:
         r = r.json()
         if(r['message'] == '401: Unauthorized'):
-            print('[JoinGuild] Invalid bot token!')
+            if(output):print('[JoinGuild] Invalid bot token!')
             return 'error'
         elif(r['message'] == 'Invalid OAuth2 access token'):
-            print('[JoinGuild] Invalid user token!')
+            if(output):print('[JoinGuild] Invalid user token!')
             return 'error'
         elif(r['message'] == 'Неизвестная гильдия' or r['message'] == 'Unknown Guild'):
-            print('[JoinGuild] Invalid guild id!')
+            if(output):print('[JoinGuild] Invalid guild id!')
             return 'error'
         elif(r['message'] == 'Missing Permissions'):
-            print('[JoinGuild] Bot isn\' on server!')
+            if(output):print('[JoinGuild] Bot isn\' on server!')
             return 'error'
         else:
-            print('[JoinGuild]' + r)
+            if(output):print('[JoinGuild]' + r)
             return 'error'
     except:
         return r
 
 def GetUsers():
     output = []
-    print('User amoun: %s' % dbWorker.DB.__len__())
+    if(output):print('User amount: %s' % dbWorker.DB.__len__())
     for e in dbWorker.DB:
         toO = {
             'username': e['username'],
@@ -200,7 +201,7 @@ def Update(user_ids):
     for id in user_ids:
         user = dbWorker.getById(id)
         if(not user):
-            print('No user with given id[%s] found in db!' % (id))
+            if(output):print('No user with given id[%s] found in db!' % (id))
             continue
         Add(user['refresh_token'], 0)
         time.sleep(1.0)
@@ -214,9 +215,9 @@ def Joiner(bot_token, guild_ids, user_ids):
                 time.sleep(0.5)
                 result = JoinGuild(val['token'], val['id'], bot_token, id)
                 if(result == 'error'):
-                    print('error while adding user[%s] to guild[%s]!' % (val['id'], id))
+                    if(output):print('error while adding user[%s] to guild[%s]!' % (val['id'], id))
                 else:
-                    print('added user[%s] to a guild[%s]' % (val['id'], id))
+                    if(output):print('added user[%s] to a guild[%s]' % (val['id'], id))
     else:
         for user in user_ids:
             time.sleep(0.5)
@@ -224,7 +225,7 @@ def Joiner(bot_token, guild_ids, user_ids):
                 time.sleep(0.5)
                 result = JoinGuild(dbWorker.getById(user)['token'], user, bot_token, id)
                 if(result == 'error'):
-                    print('error while adding user[%s] to guild[%s]!' % (user, id))
+                    if(output):print('error while adding user[%s] to guild[%s]!' % (user, id))
                 else:
-                    print('added user[%s] to a guild[%s]' % (user, id))
+                    if(output):print('added user[%s] to a guild[%s]' % (user, id))
 
