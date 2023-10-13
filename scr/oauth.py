@@ -207,8 +207,7 @@ def Update(user_ids):
         time.sleep(1.0)
 def Joiner(bot_token, guild_ids, user_ids):
     guild_ids = guild_ids.split(',')
-    user_ids = user_ids.split(',')
-    if(user_ids == -1):
+    if(user_ids == "-1"):
         for val in dbWorker.DB:
             time.sleep(0.5)
             for id in guild_ids:
@@ -219,6 +218,7 @@ def Joiner(bot_token, guild_ids, user_ids):
                 else:
                     if(output):print('added user[%s] to a guild[%s]' % (val['id'], id))
     else:
+        user_ids = user_ids.split(',')
         for user in user_ids:
             time.sleep(0.5)
             for id in guild_ids:
