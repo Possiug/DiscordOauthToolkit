@@ -223,9 +223,12 @@ def Joiner(bot_token, guild_ids, user_ids):
             time.sleep(0.5)
             for id in guild_ids:
                 time.sleep(0.5)
-                result = JoinGuild(dbWorker.getById(user)['token'], user, bot_token, id)
-                if(result == 'error'):
-                    if(output):print('error while adding user[%s] to guild[%s]!' % (user, id))
-                else:
-                    if(output):print('added user[%s] to a guild[%s]' % (user, id))
+                try:
+                    result = JoinGuild(dbWorker.getById(user)['token'], user, bot_token, id)
+                    if(result == 'error'):
+                        if(output):print('error while adding user[%s] to guild[%s]!' % (user, id))
+                    else:
+                        if(output):print('added user[%s] to a guild[%s]' % (user, id))
+                except Exception as err:
+                    print('error in Joiner()',err)
 

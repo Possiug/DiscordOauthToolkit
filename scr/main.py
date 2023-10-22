@@ -126,11 +126,15 @@ def JoinInterval(bot_token, guild_ids, user_ids, timeToSleep, event):
     if(timeToSleep < 10):
         timeToSleep = 10
     while(True):
-        time.sleep(timeToSleep)
-        if event.is_set():
-            break
+        a = 0
+        while a < timeToSleep:
+            time.sleep(1.0)
+            a += 1
+            if event.is_set():
+                print('stoped infinity join!')
+                return
         worker.Joiner(bot_token,guild_ids,user_ids)
-    print('stoped infinity join!')
+    
 
 Threads.append(Thread(target=web, args={}, daemon=True))
 Threads[0].start()
@@ -144,7 +148,7 @@ while(True):
     cmd = cwa[0]
     match(cmd):
         case 'help':
-            print('Command list:\n\thelp - show this list\n\texamples - show examples for all commands\n\tdebug - control theards debug\n\toutput - control functions output\n\tusers - shows users\n\tbyName <username> - get user from db by username!\n\tbyId <user_id> - get user from db by id!\n\tupdate <user_id> - update info and tokens of user\n\tjoinGuild <user_id> <server_id> - add user from db to a server with bot!\n\tinfJoin <user_id> <server_id> <interval_time> - add user from db to a server with bot every interval_time seconds\n\tstopInf - stoping all working infJoin instances\n\tadd <refresh_token> - add new user to db by refresh token')
+            print('Command list:\n\thelp - show this list\n\texamples - show examples for all commands\n\tdebug - control theards debug\n\toutput - control functions output\n\tusers - shows users\n\tbyName <username> - get user from db by username!\n\tbyId <user_id> - get user from db by id!\n\tupdate <user_id> - update info and tokens of user\n\tjoinGuild <user_id> <server_id> - add user from db to a server with bot!\n\tinfJoin <user_id> <server_id> <interval_time> - add user from db to a server with bot every interval_time seconds(min 10 seconds)\n\tstopInf - stoping all working infJoin instances\n\tadd <refresh_token> - add new user to db by refresh token')
         case 'debug':
             if(cwa.__len__() == 1):
                 if(worker.debug):
@@ -207,6 +211,6 @@ while(True):
             else:
                 print('Incorrect args amount! Use "help"')
         case 'examples':
-            print('Examples:\n\tdebug:\n\t debug\n\toutput:\n\t output\n\tusers:\n\t users\n\tbyName:\n\t byName possiug\n\tbyId:\n\t byId 1100792963157737602\n\tupdate:\n\t update 1100792963157737602\n\t update -1\n\t update 1161570973993156620,1078923883899535420\n\tjoinGuild:\n\t joinGuild 1100792963157737602 1161570973993156620\n\t joinGuild 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706\n\t joinGuild -1 1161570973993156620,1145744998453743706\n\tinfJoin:\n\t infjoin 1100792963157737602 1161570973993156620\n\t infJoin 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706\n\t infJoin -1 1161570973993156620,1145744998453743706\n\tstopInf:\n\t stopInf\n\tadd:\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ,OkL80QmDDUKZiPgsxw3bWaeqs0BwuW')
+            print('Examples:\n\tdebug:\n\t debug\n\toutput:\n\t output\n\tusers:\n\t users\n\tbyName:\n\t byName possiug\n\tbyId:\n\t byId 1100792963157737602\n\tupdate:\n\t update 1100792963157737602\n\t update -1\n\t update 1161570973993156620,1078923883899535420\n\tjoinGuild:\n\t joinGuild 1100792963157737602 1161570973993156620\n\t joinGuild 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706\n\t joinGuild -1 1161570973993156620,1145744998453743706\n\tinfJoin:\n\t infJoin 1100792963157737602 1161570973993156620 10\n\t infJoin 1161570973993156620,1078923883899535420 1161570973993156620,1145744998453743706 10\n\t infJoin -1 1161570973993156620,1145744998453743706 0\n\tstopInf:\n\t stopInf\n\tadd:\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ\n\t add r6CR0RbIJuJI2c0P7JB1VGtCW5WvrJ,OkL80QmDDUKZiPgsxw3bWaeqs0BwuW')
         case _:
             print('Command not found! use "help" for list of commands')
