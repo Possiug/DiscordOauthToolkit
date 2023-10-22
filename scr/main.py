@@ -143,8 +143,15 @@ interval = Event()
 #CLI
 time.sleep(1.0)
 while(True):
-    command = input('~: ')
-    cwa = command.split(' ')
+    try:
+        command = input('~: ')
+        cwa = command.split(' ')
+    except KeyboardInterrupt:
+        print('Bye see you next time :)')
+        exit()
+    except Exception as err:
+        print('error in CLI module!!!! exiting', err)
+        exit()
     cmd = cwa[0]
     match(cmd):
         case 'help':
