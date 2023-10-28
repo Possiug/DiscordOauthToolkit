@@ -85,7 +85,7 @@ else:
     config['grabber'] = {'port': d,
                          'redirect_uri': e,
                          'grabber_url_args': f}
-    print('Your redirect url:"%s"' % e+d+f)
+    print('Your redirect url:"%s"' % (str(e)+str(d)+str(f)))
     print('writing config file in %s' % configPath)
     with open(configPath, 'w') as conf:
         config.write(conf)
