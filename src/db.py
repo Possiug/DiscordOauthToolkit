@@ -2,23 +2,37 @@ import os.path
 import json
 
 
-dbPath = 'resources/db.json'
+DBPath = 'resources/db.json'
+errDBPath = 'resources/errdb.json'
 DB = []
 
-if(os.path.exists(dbPath)):
-    with open(dbPath, 'r+') as db:
+if(os.path.exists(DBPath)):
+    with open(DBPath, 'r+') as db:
         try:
-            loadedJs = json.load(db)
-            DB = loadedJs
+            DB = json.load(db)
             print("db was loaded!")
-            #print(DB)
         except Exception as err:
             print("error while reading file!: ",err)
+            db.close()
             exit()
+        db.close()
 else:
-    print("db doesn't exist, recreating file!")
-    with open(dbPath, 'w') as db:
+    print(f"{DBPath} doesn't exist, recreating file!")
+    with open(DBPath, 'w') as db:
         json.dump(DB, db, indent=4)
+        db.close()
+#
+if(os.path.exists(errDBPath)):
+    with open(errDBPath, 'r+') as errdb:
+        loadedJson = []
+        loadedJson = json.load(errdb)
+        if(loadedJson.__len__() > 0): print(f'Found profiles with errors in: {errDBPath}\n you can delete them!', )     
+        errdb.close()
+else:
+    print(f"{errDBPath} doesn't exist, recreating file!")
+    with open(errDBPath, 'w') as errdb:
+        json.dump([], errdb, indent=4)
+        errdb.close()
 
 def GetParmFromAll(parm):
     toReturn = []
@@ -51,11 +65,21 @@ def show(element):
 def delete(element):
     try:
         DB.remove(element)
+        dbSave()
     except Exception as err:
         print('Error in db module while removing! err: ',err)
 def add(element):
     DB.append(element)
     dbSave()
 def dbSave():
-    with open(dbPath, 'w') as db:
+    with open(DBPath, 'w') as db:
         json.dump(DB, db, indent=4)
+        db.close()
+def errDB(element):
+    errProfiles = []
+    with open(errDBPath, 'r') as errdb:
+        errProfiles = json.load(errdb)
+    errProfiles.append(element)
+    with open(errDBPath, 'w') as errdb:
+        json.dump(errProfiles, errdb, indent=4)
+        errdb.close()

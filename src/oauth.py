@@ -7,6 +7,7 @@ API_ENDPOINT = None
 CLIENT_ID = None
 CLIENT_SECRET = None
 REDIRECT_URI = None
+BOT_TOKEN = None
 
 debug = True
 output = True
@@ -16,38 +17,39 @@ def Code_catch(code, i):
     code_result = Exchange_code(code)
     if(code_result.__contains__('access_token')):
             if(debug):print('\n[Theard %d] filling db' % (i))
-            toDB = DataGetter(code_result)
-            repeat = dbWorker.checkRepeat(toDB['id'])
+            data = DataGetter(code_result)
+            repeat = dbWorker.checkRepeat(data['id'])
             if(repeat):
                 dbWorker.delete(repeat)
-            dbWorker.add(toDB)
+            dbWorker.add(data)
             if(debug):print('\n[Theard %d] finished filling' % (i))
     if(debug):print('\n[Theard %d] finished' % (i))
 
-def UpdateAll(i):
-    for val in dbWorker.GetParmFromAll('refresh_token'):
-        time.sleep(1.0)
-        Add(val, i)
 
-
-def Add(refresh_tokens, i):
+def Add(refresh_tokens, id = 'from_CLI', i = 0):
     refresh_tokens = refresh_tokens.split(',')
     for refresh_token in refresh_tokens:
         code_result = Refresh_token(refresh_token)
         if(code_result.__contains__('access_token')):
-            if(debug):print('\n[Theard %d] filling db' % (i))
+            if(debug):print('\n[Theard %d] filling db! User[%s]' % (i, id))
             toDB = DataGetter(code_result)
             repeat = dbWorker.checkRepeat(toDB['id'])
             if(repeat):
                 dbWorker.delete(repeat)
             dbWorker.add(toDB)
-            if(debug):print('\n[Theard %d] finished filling' % (i))
+            if(debug):print('\n[Theard %d] finished filling! User[%s]' % (i, id))
+        else:
+            if(output):print('\n[Theard %d] error while getting user info ftom discord! DB profile dumped to errDB.json' % (i))
+            dbWorker.errDB(dbWorker.getById(toDB['id']))
+            dbWorker.delete(dbWorker.getById(toDB['id']))
+        toDB = None
     if(debug):print('\n[Theard %d] finished' % (i))
 
 def DataGetter(code_result):
     token = code_result['access_token']
     uInfo = GetUserInfo(token)
-    uGuilds = GetUserGuilds(token)
+    uGuilds = GetUserGuilds(token)  
+    uGuilds = [] if uGuilds == 'error' else uGuilds
     uConnections = GetUserConnections(token)
     fGuilds = []
     if(uGuilds.__len__() != 0):
@@ -58,21 +60,21 @@ def DataGetter(code_result):
                 'is_owner':val['owner']
                 }
             fGuilds.append(e)
-        toDB = {
-                'id':uInfo['id'],
-                'username':uInfo['username'],
-                'global_name':uInfo['global_name'],
-                'token':token,
-                'refresh_token':code_result['refresh_token'],
-                'locale':uInfo['locale'],
-                'premium_type':uInfo['premium_type'],
-                'email':uInfo['email'],
-                'verified':uInfo['verified'],
-                'scopes':code_result['scope'],
-                'guilds':fGuilds,
-                'connections':uConnections
-            }
-    return toDB
+    info = {
+            'id':uInfo['id'],
+            'username':uInfo['username'],
+            'global_name':uInfo['global_name'],
+            'token':token,
+            'refresh_token':code_result['refresh_token'],
+            'locale':uInfo['locale'],
+            'premium_type':uInfo['premium_type'],
+            'email':uInfo['email'],
+            'verified':uInfo['verified'],
+            'scopes':code_result['scope'],
+            'guilds':fGuilds,
+            'connections':uConnections
+        }
+    return info
 
 def Exchange_code(code):
     data = {
@@ -110,6 +112,10 @@ def Refresh_token(refresh_token):
             if(output):print('error while refreshing token: invalid refresh_token!')
         return 'ERROR'
     except:
+        if(r.__contains__('refresh_token')):
+            if(output):print(r['refresh_token'])
+        else:
+            print('SMT WRONG IN Func Refresh_token')
         return r
 def GetUserInfo(token):
     info = requests.get('%s/users/@me' % API_ENDPOINT, headers={'Authorization':'Bearer %s' % token})
@@ -139,6 +145,9 @@ def GetUserGuilds(token):
         if(guilds['message'] == '401: Unauthorized'):
             if(output):print('Invalid token!')
             return 'error'
+        if(guilds['code'] == 40002):
+            if(output):print('Inverified account!')
+            return 'error'
     except:
         return(guilds)
 def GetUserConnections(token):
@@ -150,11 +159,11 @@ def GetUserConnections(token):
             return 'error'
     except:
         return(connections)
-def JoinGuild(token, user_id, bot_token, guild_id):
+def JoinGuild(token, user_id, guild_id):
     data = {'access_token': token}
     data = json.dumps(data)
     headers = {
-        'Authorization':'Bot %s' % bot_token,
+        'Authorization':'Bot %s' % BOT_TOKEN,
         'Content-Type': "application/json",
     }
     r = requests.put('%s/guilds/%s/members/%s' % (API_ENDPOINT, guild_id, user_id), data=data, headers=headers)
@@ -182,18 +191,13 @@ def GetUsers():
     output = []
     if(output):print('User amount: %s' % dbWorker.DB.__len__())
     for e in dbWorker.DB:
-        toO = {
-            'username': e['username'],
-            'global_name': e['global_name'],
-            'id': e['id']
-        }
-        output.append(toO)
-    dbWorker.show(output)
+        print(f'\t{e.get('username')}[{e.get('id')}]\tGlobalName: {e.get('global_name')}\tguilds: {e.get('guilds').__len__()}\temail[verified:{e.get('verified')}]: {e.get('email')}\n')
 def Update(user_ids):
     if(user_ids == '-1'):
         refresh_tokens = dbWorker.GetParmFromAll('refresh_token')
-        for refresh in refresh_tokens:
-            Add(refresh, 0)
+        users_ids = dbWorker.GetParmFromAll('id')
+        for i in range(0, refresh_tokens.__len__()):
+            Add(refresh_tokens[i],users_ids[i], 0)
             time.sleep(1.0)
         return
     user_ids = user_ids.split(',')
@@ -203,16 +207,16 @@ def Update(user_ids):
         if(not user):
             if(output):print('No user with given id[%s] found in db!' % (id))
             continue
-        Add(user['refresh_token'], 0)
+        Add(user['refresh_token'], id, 0)
         time.sleep(1.0)
-def Joiner(bot_token, guild_ids, user_ids):
+def Joiner(guild_ids, user_ids):
     guild_ids = guild_ids.split(',')
     if(user_ids == "-1"):
         for val in dbWorker.DB:
             time.sleep(0.5)
             for id in guild_ids:
                 time.sleep(0.5)
-                result = JoinGuild(val['token'], val['id'], bot_token, id)
+                result = JoinGuild(val['token'], val['id'], id)
                 if(result == 'error'):
                     if(output):print('error while adding user[%s] to guild[%s]!' % (val['id'], id))
                 else:
@@ -224,11 +228,10 @@ def Joiner(bot_token, guild_ids, user_ids):
             for id in guild_ids:
                 time.sleep(0.5)
                 try:
-                    result = JoinGuild(dbWorker.getById(user)['token'], user, bot_token, id)
+                    result = JoinGuild(dbWorker.getById(user)['token'], user, id)
                     if(result == 'error'):
                         if(output):print('error while adding user[%s] to guild[%s]!' % (user, id))
                     else:
                         if(output):print('added user[%s] to a guild[%s]' % (user, id))
                 except Exception as err:
                     print('error in Joiner()',err)
-
